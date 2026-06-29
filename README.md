@@ -13,9 +13,9 @@ A browser-based interactive epidemic simulator where misinformation spreads like
 | Member | Student ID | Role |
 |--------|-----------|------|
 | Manaswi | 614410168 | Graph & Network Engine |
-| [Member 2] | — | Epidemic Model (SEIR) |
-| [Member 3] | — | Frontend & Game UI |
-| [Member 4] | — | Analysis & Results |
+| Naisha | 614410167 | Epidemic Model (SEIR) |
+| Ho Shu-Che | 614446003 | Frontend & Game UI |
+| Ayush | 614410172 | Analysis & Results |
 
 ---
 
@@ -88,7 +88,6 @@ fake-news-firewall/
 │       └── r0_over_time.png        # R₀ estimate per tick
 │
 ├── docs/
-│   ├── FakeNewsFirewall_Report_Manaswi.pdf   # Individual final report
 │   ├── FakeNewsFirewall_Presentation.pptx   # Group slide deck
 │   └── FakeNewsFirewall_Poster.pdf          # A0 group poster
 │
@@ -320,8 +319,6 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🔗 Links
-
 - **Live Demo:** [Open FakeNewsFirewall.html](src/FakeNewsFirewall.html)
-- **Individual Report:** [docs/FakeNewsFirewall_Report_Manaswi.pdf](docs/FakeNewsFirewall_Report_Manaswi.pdf)
-- **Course:** Computer Networks, NCCU, Spring 2026
+- **Course:** Graph Signal Processing, CCU, Spring 2026
+- **Advisor:** Prof. Tsung-Wei (Jimmy) Chiang
