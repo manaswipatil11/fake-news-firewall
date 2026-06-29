@@ -1,0 +1,3 @@
+# This directory stores generated figures.
+# Run python3 scripts/plot_results.py to generate them.
+# PNG files are gitignored — regenerate from CSV data.

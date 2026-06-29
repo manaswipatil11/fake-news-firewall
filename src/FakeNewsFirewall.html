@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fake News Firewall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #080C14;
+  --surf:      #0F1623;
+  --card:      #141C2A;
+  --card2:     #101828;
+  --bdr:       #1E2A3F;
+  --bdr2:      #243047;
+  --red:       #F0364A;
+  --red-glow:  rgba(240,54,74,0.18);
+  --cyan:      #00D4FF;
+  --green:     #00C98D;
+  --amber:     #F5A623;
+  --purple:    #9B6EFF;
+  --blue:      #3B82F6;
+  --text:      #E8EDF5;
+  --text2:     #8899AA;
+  --text3:     #4A5568;
+  --mono:      'JetBrains Mono', monospace;
+  --sans:      'Inter', sans-serif;
+
+  /* touch / tap sizing */
+  --tap:       52px;   /* minimum tap target height on mobile */
+  --node-r-mob: 10px; /* larger node radius on mobile */
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  min-height: 100%; background: var(--bg); color: var(--text);
+  font-family: var(--sans); overflow-x: hidden;
+}
+
+/* ── SCREENS ───────────────────────────────────────────────────────── */
+.screen { display: none; }
+.screen.active { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TITLE SCREEN
+══════════════════════════════════════════════════════════════════════ */
+#title-screen {
+  align-items: center; justify-content: center;
+  background: radial-gradient(ellipse 70% 60% at 55% 45%, #0D1828 0%, #080C14 100%);
+  position: relative; overflow: hidden;
+}
+.grid-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--bdr) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bdr) 1px, transparent 1px);
+  background-size: 48px 48px; opacity: 0.4;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+}
+.title-inner { position: relative; z-index: 1; max-width: 680px; padding: 2rem 1.5rem; }
+.title-tag {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 5px;
+  color: var(--red); text-transform: uppercase; margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 10px;
+}
+.title-tag::before { content:''; width:28px; height:1px; background:var(--red); }
+.title-h1 {
+  font-family: var(--mono); font-size: clamp(44px,9vw,96px);
+  font-weight: 800; line-height: 0.9; letter-spacing: -2px;
+  color: var(--text); margin-bottom: 1.5rem;
+}
+.title-h1 em { color: var(--red); font-style: normal; }
+.title-desc {
+  font-family: var(--mono); font-size: clamp(12px,3vw,14px);
+  line-height: 1.9; color: var(--text2); margin-bottom: 2rem; max-width: 440px;
+}
+.title-desc strong { color: var(--cyan); }
+.btn-deploy {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 18px 40px; background: var(--red); border: none;
+  font-family: var(--mono); font-size: 15px; font-weight: 700;
+  letter-spacing: 3px; color: white; cursor: pointer; text-transform: uppercase;
+  transition: all .2s; clip-path: polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);
+  min-height: var(--tap);
+}
+.btn-deploy:hover { background: #ff4d62; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(240,54,74,.4); }
+.title-pills { display: flex; gap: 8px; margin-top: 2rem; flex-wrap: wrap; }
+.pill {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+  padding: 6px 12px; border: 1px solid var(--bdr2); color: var(--text3);
+  text-transform: uppercase; background: var(--surf);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   GAME SCREEN — DESKTOP layout (side-by-side, unchanged)
+══════════════════════════════════════════════════════════════════════ */
+#game-screen { background: var(--bg); min-height: 100vh; }
+
+/* ── HUD ──────────────────────────────────────────────────────────── */
+.hud {
+  display: flex; align-items: center;
+  background: var(--surf); border-bottom: 1px solid var(--bdr);
+  padding: 0; flex-shrink: 0; height: 64px; overflow-x: auto;
+}
+.hud-brand {
+  padding: 0 20px; border-right: 1px solid var(--bdr);
+  display: flex; flex-direction: column; justify-content: center;
+  height: 100%; flex-shrink: 0;
+}
+.hud-brand-name { font-family: var(--mono); font-size: 13px; font-weight: 800; letter-spacing: 2px; color: var(--red); }
+.hud-brand-sub  { font-family: var(--mono); font-size: 9px;  color: var(--text3); letter-spacing: 1px; margin-top: 2px; }
+.hud-stat {
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: 0 16px; border-right: 1px solid var(--bdr); height: 100%; flex-shrink: 0;
+}
+.hud-stat-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; margin-bottom: 3px; }
+.hud-stat-value { font-family: var(--mono); font-size: 22px; font-weight: 800; line-height: 1; }
+.hud-tokens { display: flex; flex-direction: column; justify-content: center; padding: 0 16px; border-right: 1px solid var(--bdr); height: 100%; flex-shrink: 0; }
+.hud-tokens-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; margin-bottom: 5px; }
+.token-row { display: flex; gap: 5px; }
+.tok { width: 15px; height: 15px; border-radius: 50%; background: var(--green); box-shadow: 0 0 7px rgba(0,201,141,.5); transition: all .3s; }
+.tok.spent { background: var(--bdr2); box-shadow: none; }
+.hud-mode { display: flex; flex-direction: column; justify-content: center; padding: 0 16px; height: 100%; margin-left: auto; border-left: 1px solid var(--bdr); flex-shrink: 0; }
+.hud-mode-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; margin-bottom: 3px; }
+.hud-mode-val   { font-family: var(--mono); font-size: 15px; font-weight: 700; }
+
+/* ── Infection bar ─────────────────────────────────────────────────── */
+.inf-bar-wrap { background: var(--surf); border-bottom: 1px solid var(--bdr); flex-shrink: 0; }
+.inf-bar-inner { position: relative; height: 8px; }
+.inf-bar-track { height: 100%; background: var(--card); }
+.inf-bar-fill  { height: 100%; background: linear-gradient(90deg,var(--amber) 0%,var(--red) 70%); transition: width .5s cubic-bezier(.4,0,.2,1); }
+.inf-threshold { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: rgba(255,255,255,.3); }
+.inf-threshold::after {
+  content:'50%'; position:absolute; top:-18px; left:4px;
+  font-family:var(--mono); font-size:9px; color:var(--text3); white-space:nowrap;
+}
+
+/* ── Tick strip ───────────────────────────────────────────────────── */
+.tick-strip { display:flex; gap:3px; padding:5px 10px; background:var(--surf); border-bottom:1px solid var(--bdr); flex-shrink:0; }
+.t-cell { flex:1; height:5px; border-radius:2px; background:var(--bdr2); transition:background .3s; }
+.t-cell.done { background:rgba(240,54,74,.35); }
+.t-cell.now  { background:var(--red); box-shadow:0 0 6px var(--red); }
+.t-cell.mut  { background:var(--amber) !important; }
+
+/* ── DESKTOP: side-by-side body ───────────────────────────────────── */
+.game-body { display:flex; flex:1; overflow:hidden; min-height:0; }
+.canvas-area { flex:1; position:relative; overflow:hidden; background:var(--bg); }
+canvas { display:block; touch-action: none; }
+.canvas-mode-badge {
+  position:absolute; top:12px; left:12px;
+  background:rgba(155,110,255,.9); color:white;
+  font-family:var(--mono); font-size:11px; font-weight:700;
+  padding:6px 14px; letter-spacing:2px; display:none; pointer-events:none;
+  text-transform:uppercase; box-shadow:0 0 18px rgba(155,110,255,.4);
+}
+.canvas-mode-badge.show { display:block; }
+
+/* ── SIDE PANEL (desktop) ─────────────────────────────────────────── */
+.side {
+  width: 260px; background: var(--surf); border-left: 1px solid var(--bdr);
+  display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+}
+.sp-sec { padding: 14px 16px; border-bottom: 1px solid var(--bdr); }
+.sp-title { font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:3px; color:var(--red); text-transform:uppercase; margin-bottom:10px; }
+
+/* R0 */
+.r0-block { display:flex; align-items:baseline; gap:8px; }
+.r0-num { font-family:var(--mono); font-size:44px; font-weight:800; line-height:1; transition:color .3s; }
+.r0-unit { font-family:var(--mono); font-size:10px; color:var(--text3); letter-spacing:1px; }
+.r0-arrow { font-family:var(--mono); font-size:11px; font-weight:700; margin-top:2px; }
+
+/* State rows */
+.state-rows { display:flex; flex-direction:column; gap:7px; }
+.sr { display:flex; align-items:center; gap:8px; }
+.sr-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.sr-name { font-family:var(--mono); font-size:11px; color:var(--text2); flex:1; }
+.sr-bar-wrap { width:56px; height:4px; background:var(--bdr2); border-radius:2px; overflow:hidden; }
+.sr-bar { height:100%; border-radius:2px; transition:width .4s; }
+.sr-count { font-family:var(--mono); font-size:12px; font-weight:700; color:var(--text); min-width:26px; text-align:right; }
+
+/* Controls */
+.ctrl-sec { padding:12px 16px; border-bottom:1px solid var(--bdr); }
+.mode-btns { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:9px; }
+.mb {
+  padding:10px 6px; font-family:var(--mono); font-size:11px; font-weight:700;
+  letter-spacing:1px; border:1px solid var(--bdr2); background:transparent;
+  color:var(--text3); cursor:pointer; text-transform:uppercase; transition:all .15s;
+}
+.mb.on { border-color:var(--purple); color:var(--purple); background:rgba(155,110,255,.08); }
+.act-btn {
+  width:100%; padding:11px; font-family:var(--mono); font-size:12px; font-weight:700;
+  letter-spacing:2px; border:1px solid; background:transparent; cursor:pointer;
+  text-transform:uppercase; transition:all .15s; margin-bottom:7px; display:block;
+}
+.act-btn:last-child { margin-bottom:0; }
+.ab-play  { border-color:var(--green);  color:var(--green); }
+.ab-play:hover  { background:var(--green);  color:var(--bg); }
+.ab-pause { border-color:var(--amber);  color:var(--amber); }
+.ab-pause:hover { background:var(--amber);  color:var(--bg); }
+.ab-reset { border-color:var(--bdr2);   color:var(--text3); }
+.ab-reset:hover { border-color:var(--text3); color:var(--text2); }
+
+/* Legend */
+.legend-sec { padding:12px 16px; border-bottom:1px solid var(--bdr); }
+.leg-row { display:flex; align-items:center; gap:7px; margin-bottom:5px; font-family:var(--mono); font-size:11px; color:var(--text2); }
+.leg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.leg-note { font-size:9px; color:var(--text3); margin-left:auto; letter-spacing:1px; }
+
+/* Log */
+.log-hdr { padding:10px 16px 6px; font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:3px; color:var(--red); text-transform:uppercase; border-bottom:1px solid var(--bdr); }
+.log-body { flex:1; overflow-y:auto; }
+.log-body::-webkit-scrollbar { width:3px; }
+.log-body::-webkit-scrollbar-thumb { background:var(--bdr2); border-radius:2px; }
+.log-entry { padding:5px 16px; font-family:var(--mono); font-size:11px; line-height:1.5; color:var(--text3); border-bottom:1px solid rgba(30,42,63,.5); }
+.log-entry.warn { color:var(--amber); }
+.log-entry.bad  { color:var(--red); }
+.log-entry.good { color:var(--green); }
+.log-entry.info { color:var(--cyan); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE OVERRIDES  (≤ 640px)
+   Stack: canvas (full width, square-ish) → stats strip → controls → log
+══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* HUD: smaller, no overflow */
+  .hud { height: 52px; overflow-x: auto; scrollbar-width: none; }
+  .hud::-webkit-scrollbar { display: none; }
+  .hud-brand-name { font-size: 11px; }
+  .hud-brand-sub  { display: none; }
+  .hud-stat-value { font-size: 18px; }
+  .hud-stat { padding: 0 12px; }
+  .hud-tokens { padding: 0 12px; }
+  .tok { width: 13px; height: 13px; }
+  .hud-mode { padding: 0 12px; }
+  .hud-mode-val { font-size: 13px; }
+
+  /* Full-width game body stacked vertically */
+  .game-body { flex-direction: column; overflow: visible; }
+
+  /* Canvas: full width, height = width (square on mobile) */
+  .canvas-area { width: 100%; flex: none; }
+
+  /* Side panel: full width, no left border, no fixed height */
+  .side {
+    width: 100%; border-left: none; border-top: 1px solid var(--bdr);
+    overflow-y: visible; flex-shrink: 0;
+  }
+
+  /* Stats: horizontal scrolling strip instead of vertical list */
+  .sp-sec.stats-sec {
+    padding: 12px 14px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .sp-sec.stats-sec::-webkit-scrollbar { display: none; }
+
+  .state-rows { flex-direction: row; gap: 6px; width: max-content; }
+  .sr {
+    flex-direction: column; align-items: center; gap: 4px;
+    background: var(--card); border: 1px solid var(--bdr2);
+    padding: 8px 10px; min-width: 68px; border-radius: 4px;
+  }
+  .sr-name  { font-size: 9px; text-align: center; }
+  .sr-bar-wrap { display: none; } /* hide mini-bar, show count only */
+  .sr-count { font-size: 20px; }
+
+  /* R0: compact horizontal */
+  .sp-sec.r0-sec { padding: 10px 14px; }
+  .r0-num { font-size: 36px; }
+
+  /* Controls: 2-row grid — mode buttons top, action buttons bottom */
+  .ctrl-sec { padding: 12px 14px; }
+  .mode-btns { gap: 8px; margin-bottom: 10px; }
+  .mb {
+    padding: 14px 6px;       /* taller tap target */
+    font-size: 13px;
+    min-height: var(--tap);
+  }
+  .act-btn {
+    padding: 16px;           /* big tap target */
+    font-size: 14px;
+    min-height: var(--tap);
+    margin-bottom: 10px;
+  }
+
+  /* Legend: horizontal row */
+  .legend-sec { padding: 10px 14px; }
+  .legend-rows-inner {
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .leg-row { margin-bottom: 0; font-size: 11px; }
+
+  /* Log: fixed max height on mobile to not push page too long */
+  .log-body { max-height: 180px; overflow-y: auto; }
+  .log-entry { font-size: 11px; padding: 6px 14px; }
+
+  /* Mode badge: bigger on mobile */
+  .canvas-mode-badge { font-size: 13px; padding: 10px 18px; top: 10px; left: 50%; transform: translateX(-50%); }
+}
+
+/* ── TOOLTIP ─────────────────────────────────────────────────────── */
+#tooltip {
+  position: fixed; background: var(--card); border: 1px solid var(--bdr2);
+  padding: 10px 14px; font-family: var(--mono); pointer-events: none; z-index: 200;
+  display: none; min-width: 150px; box-shadow: 0 8px 32px rgba(0,0,0,.5);
+}
+.tt-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+.tt-row  { font-size: 11px; color: var(--text2); line-height: 1.8; }
+.tt-act  { font-size: 11px; color: var(--purple); margin-top: 5px; font-weight: 600; }
+
+/* ── END SCREEN ──────────────────────────────────────────────────── */
+#end-screen {
+  align-items: center; justify-content: center; min-height: 100vh;
+  background: radial-gradient(ellipse 60% 50% at 50% 40%, #0D1828 0%, #080C14 100%);
+}
+.end-wrap { max-width: 520px; padding: 2rem 1.5rem; width: 100%; }
+.end-verdict { font-family:var(--mono); font-size:clamp(38px,8vw,72px); font-weight:800; line-height:1; letter-spacing:-1px; margin-bottom:8px; }
+.ev-win  { color:var(--green); }
+.ev-lose { color:var(--red); }
+.end-sub { font-family:var(--mono); font-size:13px; color:var(--text2); line-height:1.8; margin-bottom:1.5rem; }
+.end-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1.25rem; }
+.es-card { background:var(--card); border:1px solid var(--bdr2); padding:14px 10px; }
+.es-val  { font-family:var(--mono); font-size:28px; font-weight:800; line-height:1; }
+.es-lbl  { font-family:var(--mono); font-size:9px;  color:var(--text3); letter-spacing:2px; margin-top:4px; text-transform:uppercase; }
+.end-insight { background:var(--card); border:1px solid var(--bdr2); border-left:3px solid var(--amber); padding:14px; margin-bottom:1.25rem; }
+.ei-title { font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:3px; color:var(--amber); text-transform:uppercase; margin-bottom:7px; }
+.ei-body  { font-family:var(--mono); font-size:12px; color:var(--text2); line-height:1.8; }
+.end-acts { display:flex; gap:10px; flex-wrap:wrap; }
+.ea-btn {
+  padding:14px 22px; font-family:var(--mono); font-size:12px; font-weight:700;
+  letter-spacing:2px; border:1px solid; background:transparent; cursor:pointer;
+  text-transform:uppercase; transition:all .2s; min-height:var(--tap);
+}
+.ea-main { border-color:var(--red);   color:var(--red); }
+.ea-main:hover { background:var(--red); color:white; }
+.ea-sec  { border-color:var(--bdr2);  color:var(--text3); }
+.ea-sec:hover  { border-color:var(--text3); color:var(--text2); }
+
+/* ── OVERLAYS ────────────────────────────────────────────────────── */
+.flash-ov { position:fixed; inset:0; pointer-events:none; z-index:500; opacity:0; transition:opacity .2s; }
+.mut-toast {
+  position:fixed; top:70px; left:50%; transform:translateX(-50%);
+  background:var(--amber); color:#000;
+  padding:10px 24px; font-family:var(--mono); font-size:13px; font-weight:800;
+  letter-spacing:2px; z-index:300; display:none; text-transform:uppercase;
+  box-shadow:0 4px 24px rgba(245,166,35,.5); white-space:nowrap;
+  animation:toastIn .3s ease;
+}
+@keyframes toastIn { from{top:50px;opacity:0} to{top:70px;opacity:1} }
+
+/* mobile: vaccinate floating button (appears when in vaccinate mode on mobile) */
+.mob-vax-hint {
+  display: none;
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--purple); color: white;
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  padding: 11px 22px; letter-spacing: 2px; z-index: 50;
+  box-shadow: 0 4px 20px rgba(155,110,255,.5); text-transform: uppercase;
+  pointer-events: none; border-radius: 2px; white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .mob-vax-hint.show { display: block; }
+}
+</style>
+</head>
+<body>
+
+<!-- TITLE -->
+<div id="title-screen" class="screen active">
+  <div class="grid-bg"></div>
+  <div class="title-inner">
+    <div class="title-tag">Epidemic Network Simulator</div>
+    <h1 class="title-h1">FAKE<br>NEWS<br><em>FIRE</em>WALL</h1>
+    <p class="title-desc">
+      A story just dropped on <strong>Patient Zero</strong>.<br>
+      It spreads like a virus — node by node, tick by tick.<br>
+      You have <strong>5 fact-checker tokens</strong>. 20 ticks.<br>
+      Keep infection below 50% to win.
+    </p>
+    <button class="btn-deploy" onclick="startGame()">▶ DEPLOY FACT-CHECKERS</button>
+    <div class="title-pills">
+      <span class="pill">SEIR model</span>
+      <span class="pill">Barabási–Albert</span>
+      <span class="pill">Louvain clusters</span>
+      <span class="pill">R₀ live</span>
+    </div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen">
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-brand">
+      <div class="hud-brand-name">FNF</div>
+      <div class="hud-brand-sub">FAKE NEWS FIREWALL</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-stat-label">Tick</div>
+      <div class="hud-stat-value" id="hv-tick" style="color:var(--text)">0</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-stat-label">Infected</div>
+      <div class="hud-stat-value" id="hv-inf" style="color:var(--red)">0%</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-stat-label">R₀</div>
+      <div class="hud-stat-value" id="hv-r0" style="color:var(--text2)">—</div>
+    </div>
+    <div class="hud-tokens">
+      <div class="hud-tokens-label">Tokens</div>
+      <div class="token-row" id="tok-row"></div>
+    </div>
+    <div class="hud-mode">
+      <div class="hud-mode-label">Mode</div>
+      <div class="hud-mode-val" id="hv-mode" style="color:var(--purple)">WATCH</div>
+    </div>
+  </div>
+
+  <!-- Infection bar -->
+  <div class="inf-bar-wrap">
+    <div class="inf-bar-inner">
+      <div class="inf-bar-track">
+        <div class="inf-bar-fill" id="inf-fill" style="width:0%"></div>
+      </div>
+      <div class="inf-threshold"></div>
+    </div>
+  </div>
+
+  <!-- Tick strip -->
+  <div class="tick-strip" id="tick-strip"></div>
+
+  <!-- Body -->
+  <div class="game-body">
+    <!-- Canvas -->
+    <div class="canvas-area" id="canvas-area">
+      <canvas id="gc"></canvas>
+      <div class="canvas-mode-badge" id="mode-badge">🛡 VACCINATE — TAP A NODE</div>
+      <div class="mob-vax-hint" id="mob-hint">💉 TAP ANY NODE TO VACCINATE</div>
+    </div>
+
+    <!-- Side panel -->
+    <div class="side">
+
+      <!-- R0 -->
+      <div class="sp-sec r0-sec">
+        <div class="sp-title">Reproduction R₀</div>
+        <div class="r0-block">
+          <div class="r0-num" id="r0-big">—</div>
+          <div>
+            <div class="r0-unit">effective R₀</div>
+            <div class="r0-arrow" id="r0-arrow"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- State counts -->
+      <div class="sp-sec stats-sec">
+        <div class="sp-title">Network State</div>
+        <div class="state-rows" id="state-rows"></div>
+      </div>
+
+      <!-- Controls -->
+      <div class="ctrl-sec">
+        <div class="sp-title">Controls</div>
+        <div class="mode-btns">
+          <button class="mb on" id="mb-watch"  onclick="setMode('watch')" title="Watch mode: observe the spread. Tapping nodes does nothing.">👁 Watch</button>
+          <button class="mb"    id="mb-vax"    onclick="setMode('vaccinate')">💉 Vaccinate</button>
+        </div>
+        <div id="mode-desc" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:9px;line-height:1.5;padding:0 2px;">
+          👁 <b style="color:var(--text2)">Watch</b> — observe spread, no interaction<br>
+          💉 <b style="color:var(--purple)">Vaccinate</b> — tap a node to fact-check it
+        </div>
+        <button class="act-btn ab-play" id="play-btn" onclick="togglePlay()">▶ PLAY</button>
+        <button class="act-btn ab-reset" onclick="doReset()">↺ RESET</button>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend-sec">
+        <div class="sp-title">Node Types</div>
+        <div class="legend-rows-inner">
+          <div class="leg-row"><div class="leg-dot" style="border:2px solid #fff;background:transparent"></div>Hub<span class="leg-note">HIGH-DEG</span></div>
+          <div class="leg-row"><div class="leg-dot" style="background:rgba(245,166,35,.6)"></div>Bridge edge<span class="leg-note">CROSS-CLUSTER</span></div>
+          <div class="leg-row"><div class="leg-dot" style="background:var(--red)"></div>Infected<span class="leg-note">SPREADING</span></div>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div class="log-hdr">Event Log</div>
+      <div class="log-body" id="log-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- END -->
+<div id="end-screen" class="screen">
+  <div class="end-wrap">
+    <div class="end-verdict" id="ev"></div>
+    <p class="end-sub" id="es-sub"></p>
+    <div class="end-stats">
+      <div class="es-card"><div class="es-val" id="es-pct" style="color:var(--red)">—</div><div class="es-lbl">Final infected</div></div>
+      <div class="es-card"><div class="es-val" id="es-tok" style="color:var(--green)">—</div><div class="es-lbl">Tokens saved</div></div>
+      <div class="es-card"><div class="es-val" id="es-scr" style="color:var(--amber)">—</div><div class="es-lbl">Score</div></div>
+    </div>
+    <div class="end-insight">
+      <div class="ei-title">⬡ Network Insight</div>
+      <div class="ei-body" id="ei-body"></div>
+    </div>
+    <div class="end-acts">
+      <button class="ea-btn ea-main" onclick="doReset()">↺ Play Again</button>
+      <button class="ea-btn ea-sec"  onclick="goTitle()">← Title</button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlays -->
+<div class="flash-ov" id="flash"></div>
+<div class="mut-toast" id="mut-toast">⚠ MUTATION — RELAPSE ACTIVE</div>
+<div id="tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-row"  id="tt-rows"></div>
+  <div class="tt-act"  id="tt-act"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const N=120, M=2, CLUSTERS=4;
+const BETA=0.30, GAMMA=0.18, DELTA=0.09;
+const HUB_AMP=2.6, MAX_TICKS=20, TICK_MS=1500, TOTAL_TOK=5;
+const WIN_THR=0.50;
+const ST={S:0,E:1,I:2,R:3,V:4};
+const ST_COL=['#3b82f6','#f59e0b','#F0364A','#00C98D','#9B6EFF'];
+const ST_NAME=['Susceptible','Exposed','Infected','Recovered','Vaccinated'];
+const STATES_META=[
+  {id:'s',name:'Susceptible',col:'#3b82f6'},
+  {id:'e',name:'Exposed',    col:'#f59e0b'},
+  {id:'i',name:'Infected',   col:'#F0364A'},
+  {id:'r',name:'Recovered',  col:'#00C98D'},
+  {id:'v',name:'Vaccinated', col:'#9B6EFF'},
+];
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let nodes=[], edges=[], adj=[];
+let tick=0, playing=false, dead=false;
+let tokens=TOTAL_TOK, mode='watch';
+let mutFired=false, newInf=0, prevInf=0;
+let r0hist=[], hov=null, tickTimer=null, pulses=[];
+let isMobile = false;
+
+// ═══════════════════════════════════════════════════════════
+// GRAPH
+// ═══════════════════════════════════════════════════════════
+function rnd(a,b){return a+Math.random()*(b-a);}
+function buildGraph(W,H){
+  nodes=[]; edges=[]; adj=Array.from({length:N},()=>[]);
+  const cc=Array.from({length:CLUSTERS},()=>({x:rnd(W*.18,W*.82),y:rnd(H*.18,H*.82)}));
+  for(let i=0;i<N;i++){
+    const c=i%CLUSTERS;
+    nodes.push({id:i,x:cc[c].x+rnd(-W*.13,W*.13),y:cc[c].y+rnd(-H*.13,H*.13),
+      vx:0,vy:0,state:ST.S,cluster:c,deg:0,isHub:false,expT:0});
+  }
+  const deg=new Array(N).fill(0);
+  for(let i=0;i<Math.min(6,N);i++) link(i,(i+1)%6,deg);
+  for(let i=6;i<N;i++){
+    const cl=nodes[i].cluster; const seen=new Set(); let att=0;
+    while(seen.size<M&&att<300){
+      att++;
+      const same=Math.random()<0.72;
+      const pool=nodes.filter(n=>n.id<i&&(same?n.cluster===cl:true));
+      if(!pool.length)break;
+      const tot=pool.reduce((s,n)=>s+deg[n.id]+1,0);
+      let r=Math.random()*tot,cum=0;
+      for(const n of pool){cum+=deg[n.id]+1;if(cum>=r){seen.add(n.id);break;}}
+    }
+    seen.forEach(t=>link(i,t,deg));
+  }
+  const sorted=[...deg].sort((a,b)=>b-a);
+  const thr=sorted[Math.floor(N*.08)];
+  nodes.forEach(n=>{n.isHub=n.deg>=thr;});
+}
+function link(a,b,deg){
+  if(adj[a]?.includes(b))return;
+  adj[a].push(b);adj[b].push(a);
+  edges.push({a,b});
+  nodes[a].deg++;nodes[b].deg++;
+  if(deg){deg[a]++;deg[b]++;}
+}
+
+// ═══════════════════════════════════════════════════════════
+// LAYOUT
+// ═══════════════════════════════════════════════════════════
+function layout(W,H,steps=140){
+  const k=Math.sqrt(W*H/N)*0.85;
+  for(let s=0;s<steps;s++){
+    const cool=1-s/steps;
+    for(let i=0;i<N;i++){
+      let fx=0,fy=0;
+      for(let j=0;j<N;j++){
+        if(i===j)continue;
+        const dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y;
+        const d2=dx*dx+dy*dy+.01,f=k*k/d2;
+        fx+=f*dx;fy+=f*dy;
+      }
+      nodes[i].vx=(nodes[i].vx+fx)*.5;
+      nodes[i].vy=(nodes[i].vy+fy)*.5;
+    }
+    edges.forEach(({a,b})=>{
+      const dx=nodes[b].x-nodes[a].x,dy=nodes[b].y-nodes[a].y;
+      const d=Math.sqrt(dx*dx+dy*dy)+.01,f=d/k*cool;
+      nodes[a].vx+=dx*f*.5;nodes[a].vy+=dy*f*.5;
+      nodes[b].vx-=dx*f*.5;nodes[b].vy-=dy*f*.5;
+    });
+    const cs=Array.from({length:CLUSTERS},()=>({x:0,y:0,n:0}));
+    nodes.forEach(n=>{cs[n.cluster].x+=n.x;cs[n.cluster].y+=n.y;cs[n.cluster].n++;});
+    const cen=cs.map(c=>({x:c.x/c.n,y:c.y/c.n}));
+    nodes.forEach(n=>{
+      n.vx+=(cen[n.cluster].x-n.x)*.045*cool;
+      n.vy+=(cen[n.cluster].y-n.y)*.045*cool;
+    });
+    nodes.forEach(n=>{
+      n.x+=Math.max(-28,Math.min(28,n.vx*cool));
+      n.y+=Math.max(-28,Math.min(28,n.vy*cool));
+      n.x=Math.max(20,Math.min(W-20,n.x));
+      n.y=Math.max(20,Math.min(H-20,n.y));
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// CANVAS SETUP
+// ═══════════════════════════════════════════════════════════
+const cvs=document.getElementById('gc');
+const ctx=cvs.getContext('2d');
+let W=0,H=0;
+
+function resize(){
+  const area=document.getElementById('canvas-area');
+  isMobile = window.innerWidth <= 640;
+
+  if(isMobile){
+    // On mobile: full-width square canvas (or 90% of viewport height, whichever is smaller)
+    const vw = window.innerWidth;
+    const maxH = Math.floor(window.innerHeight * 0.52);
+    W = vw;
+    H = Math.min(vw, maxH);
+    area.style.height = H + 'px';
+  } else {
+    W = area.clientWidth;
+    H = area.clientHeight;
+  }
+  cvs.width=W; cvs.height=H;
+  cvs.style.width  = W + 'px';
+  cvs.style.height = H + 'px';
+}
+
+// ═══════════════════════════════════════════════════════════
+// DRAW
+// ═══════════════════════════════════════════════════════════
+const CLUSTER_COLS=['rgba(59,130,246,0.04)','rgba(0,212,255,0.04)','rgba(155,110,255,0.04)','rgba(0,201,141,0.04)'];
+
+// Node radius: larger on mobile for easier tapping
+function nodeR(n){ return isMobile ? (n.isHub?14:9) : (n.isHub?10:6); }
+
+function draw(){
+  if(!W)return;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#080C14';ctx.fillRect(0,0,W,H);
+
+  // Cluster washes
+  const cs=Array.from({length:CLUSTERS},()=>({x:0,y:0,n:0}));
+  nodes.forEach(n=>{cs[n.cluster].x+=n.x;cs[n.cluster].y+=n.y;cs[n.cluster].n++;});
+  cs.forEach((c,i)=>{
+    if(!c.n)return;
+    const cx=c.x/c.n,cy=c.y/c.n;
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,W*.20);
+    g.addColorStop(0,CLUSTER_COLS[i]);g.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(cx,cy,W*.20,0,Math.PI*2);
+    ctx.fillStyle=g;ctx.fill();
+  });
+
+  // Pulse rings
+  pulses=pulses.filter(p=>p.r<p.max);
+  pulses.forEach(p=>{
+    const alpha=1-p.r/p.max;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(240,54,74,${alpha*0.4})`;
+    ctx.lineWidth=isMobile?2:1.5;ctx.stroke();
+    p.r+=isMobile?2.5:2;
+  });
+
+  // Edges
+  edges.forEach(({a,b})=>{
+    const na=nodes[a],nb=nodes[b];
+    const cross=na.cluster!==nb.cluster;
+    const hot=na.state===ST.I||nb.state===ST.I;
+    ctx.beginPath();ctx.moveTo(na.x,na.y);ctx.lineTo(nb.x,nb.y);
+    if(cross){
+      ctx.strokeStyle=hot?'rgba(245,166,35,0.65)':'rgba(245,166,35,0.22)';
+      ctx.lineWidth=isMobile?1.8:1.4;
+    } else {
+      ctx.strokeStyle=hot?'rgba(240,54,74,0.22)':'rgba(30,42,63,0.9)';
+      ctx.lineWidth=isMobile?1:0.8;
+    }
+    ctx.stroke();
+  });
+
+  // Nodes
+  nodes.forEach(n=>{
+    const r=nodeR(n);
+    const col=ST_COL[n.state];
+    const isH=hov===n.id;
+
+    // glow
+    if(n.state===ST.I&&n.isHub){
+      const g=ctx.createRadialGradient(n.x,n.y,r,n.x,n.y,r*4);
+      g.addColorStop(0,'rgba(240,54,74,0.30)');g.addColorStop(1,'rgba(240,54,74,0)');
+      ctx.beginPath();ctx.arc(n.x,n.y,r*4,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    }
+
+    // hover / selection ring
+    if(isH){
+      ctx.beginPath();ctx.arc(n.x,n.y,r+(isMobile?9:7),0,Math.PI*2);
+      ctx.strokeStyle=mode==='vaccinate'?'rgba(155,110,255,0.9)':'rgba(255,255,255,0.4)';
+      ctx.lineWidth=2;ctx.stroke();
+    }
+
+    // fill
+    ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+    ctx.fillStyle=col;ctx.fill();
+
+    // hub ring
+    if(n.isHub){
+      ctx.strokeStyle='rgba(255,255,255,0.55)';
+      ctx.lineWidth=isMobile?2.2:1.8;ctx.stroke();
+    }
+
+    // vaccinated cross
+    if(n.state===ST.V){
+      const sz=isMobile?5:4;
+      ctx.strokeStyle='rgba(255,255,255,0.9)';ctx.lineWidth=isMobile?2.5:2;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(n.x-sz,n.y);ctx.lineTo(n.x+sz,n.y);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(n.x,n.y-sz);ctx.lineTo(n.x,n.y+sz);ctx.stroke();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// NODE HIT TEST — larger radius on mobile for easier tapping
+// ═══════════════════════════════════════════════════════════
+function nodeAt(x,y){
+  const hitR = isMobile ? 22 : 12;  // generous tap target on mobile
+  for(const n of nodes){
+    const dx=n.x-x,dy=n.y-y;
+    if(dx*dx+dy*dy<=hitR*hitR)return n;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// POINTER EVENTS (unified mouse + touch)
+// ═══════════════════════════════════════════════════════════
+function getCanvasXY(e){
+  const rect=cvs.getBoundingClientRect();
+  const src=e.touches?e.touches[0]:e;
+  return {x:src.clientX-rect.left, y:src.clientY-rect.top};
+}
+
+// Desktop mouse
+cvs.addEventListener('mousemove',e=>{
+  if(isMobile)return;
+  const {x,y}=getCanvasXY(e);
+  const n=nodeAt(x,y);
+  const tt=document.getElementById('tooltip');
+  if(n){
+    hov=n.id;
+    document.getElementById('tt-name').textContent=(n.isHub?'★ Hub · ':'')+'Node #'+n.id;
+    document.getElementById('tt-rows').innerHTML=
+      `State: <span style="color:${ST_COL[n.state]}">${ST_NAME[n.state]}</span><br>Connections: ${n.deg}<br>Cluster: ${n.cluster}`;
+    const canVax=mode==='vaccinate'&&tokens>0&&n.state!==ST.V&&!dead;
+    document.getElementById('tt-act').textContent=canVax?'Click to vaccinate':'';
+    tt.style.display='block';
+    tt.style.left=(e.clientX+16)+'px';tt.style.top=(e.clientY-12)+'px';
+    cvs.style.cursor=canVax?'pointer':'crosshair';
+  } else {
+    hov=null;tt.style.display='none';cvs.style.cursor='crosshair';
+  }
+  draw();
+});
+cvs.addEventListener('mouseleave',()=>{
+  if(isMobile)return;
+  hov=null;document.getElementById('tooltip').style.display='none';draw();
+});
+
+// Click (desktop)
+cvs.addEventListener('click',e=>{
+  if(isMobile)return;
+  if(mode!=='vaccinate'||tokens<=0||dead)return;
+  const {x,y}=getCanvasXY(e);
+  vaccinate(nodeAt(x,y));
+});
+
+// Touch (mobile)
+cvs.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  if(mode!=='vaccinate'||tokens<=0||dead)return;
+  const {x,y}=getCanvasXY(e);
+  const n=nodeAt(x,y);
+  if(n){
+    hov=n.id; draw();
+    setTimeout(()=>{hov=null;vaccinate(n);},80);
+  }
+},{passive:false});
+
+// Touch end — clear any hover
+cvs.addEventListener('touchend',e=>{
+  e.preventDefault();
+  hov=null; draw();
+  document.getElementById('tooltip').style.display='none';
+},{passive:false});
+
+function vaccinate(n){
+  if(!n||n.state===ST.V){if(n)log('Already vaccinated','info');return;}
+  n.state=ST.V;tokens--;
+  updateToks();updateUI();draw();
+  log(`✓ Vaccinated ${n.isHub?'HUB ':''}Node #${n.id}`,'good');
+  flash('rgba(155,110,255,0.12)');
+  if(tokens===0){log('All tokens used','warn');setMode('watch');}
+}
+
+// ═══════════════════════════════════════════════════════════
+// EPIDEMIC STEP
+// ═══════════════════════════════════════════════════════════
+function step(){
+  if(dead)return;
+  tick++;newInf=0;
+
+  if(tick===10&&!mutFired){
+    mutFired=true;showToast();log('⚠ MUTATION: relapse active','bad');
+  }
+
+  const nxt=nodes.map(n=>n.state);
+  nodes.forEach((n,i)=>{
+    if(n.state===ST.V)return;
+    if(n.state===ST.I){
+      adj[i].forEach(j=>{
+        if(nodes[j].state===ST.S){
+          const b=BETA*(n.isHub?HUB_AMP:1);
+          if(Math.random()<b){nxt[j]=ST.E;newInf++;}
+        }
+      });
+      if(Math.random()<GAMMA)nxt[i]=ST.R;
+    } else if(n.state===ST.E){
+      n.expT++;if(n.expT>=2){nxt[i]=ST.I;n.expT=0;}
+    } else if(n.state===ST.R&&mutFired){
+      if(Math.random()<DELTA){nxt[i]=ST.I;newInf++;}
+    }
+  });
+  nodes.forEach((n,i)=>n.state=nxt[i]);
+
+  // pulses
+  nodes.forEach(n=>{
+    if(n.state===ST.I&&Math.random()<0.3){
+      pulses.push({x:n.x,y:n.y,r:nodeR(n)*1.2,max:nodeR(n)*(isMobile?5:4.5)});
+    }
+  });
+
+  const infN=nodes.filter(n=>n.state===ST.I).length;
+  if(prevInf>0){const r=newInf/prevInf;r0hist.push(r);if(r0hist.length>5)r0hist.shift();}
+  prevInf=infN;
+
+  updateUI();draw();
+  if(tick%4===0||tick===1)log(`Tick ${tick}: ${(infN/N*100).toFixed(0)}% infected`,infN/N>.3?'bad':'warn');
+  if(tick>=MAX_TICKS||infN===0||infN/N>=WIN_THR){endGame();}
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI
+// ═══════════════════════════════════════════════════════════
+function buildStateRows(){
+  const el=document.getElementById('state-rows');
+  el.innerHTML=STATES_META.map(m=>`
+    <div class="sr">
+      <div class="sr-dot" style="background:${m.col}"></div>
+      <div class="sr-name">${m.name}</div>
+      <div class="sr-bar-wrap"><div class="sr-bar" id="srb-${m.id}" style="background:${m.col};width:0%"></div></div>
+      <div class="sr-count" id="src-${m.id}">0</div>
+    </div>`).join('');
+}
+
+function updateUI(){
+  const c=[0,0,0,0,0];nodes.forEach(n=>c[n.state]++);
+  const pct=(c[ST.I]/N*100).toFixed(0);
+  document.getElementById('hv-tick').textContent=tick;
+  document.getElementById('hv-inf').textContent=pct+'%';
+  document.getElementById('inf-fill').style.width=Math.min(100,c[ST.I]/N*100)+'%';
+  ['s','e','i','r','v'].forEach((k,i)=>{
+    document.getElementById('src-'+k).textContent=c[i];
+    document.getElementById('srb-'+k).style.width=(c[i]/N*100)+'%';
+  });
+  const avgR0=r0hist.length?(r0hist.reduce((a,b)=>a+b,0)/r0hist.length):0;
+  const r0str=r0hist.length?avgR0.toFixed(2):'—';
+  const r0col=avgR0>1.5?'var(--red)':avgR0>1?'var(--amber)':'var(--green)';
+  document.getElementById('r0-big').textContent=r0str;
+  document.getElementById('r0-big').style.color=r0col;
+  document.getElementById('hv-r0').textContent=r0str;
+  document.getElementById('hv-r0').style.color=r0col;
+  document.getElementById('r0-arrow').textContent=avgR0>1?'▲ spreading':'▼ slowing';
+  document.getElementById('r0-arrow').style.color=r0col;
+  document.querySelectorAll('.t-cell').forEach((c2,i)=>{
+    c2.classList.remove('done','now');
+    if(i===9)c2.classList.add('mut');
+    else if(i<tick-1)c2.classList.add('done');
+    else if(i===tick-1)c2.classList.add('now');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════════
+function setMode(m){
+  mode=m;
+  document.getElementById('mb-watch').classList.toggle('on',m==='watch');
+  document.getElementById('mb-vax').classList.toggle('on',m==='vaccinate');
+  document.getElementById('hv-mode').textContent=m==='vaccinate'?'VACCINATE':'WATCH';
+  document.getElementById('mode-badge').classList.toggle('show',m==='vaccinate');
+  const hint=document.getElementById('mob-hint');
+  if(hint) hint.classList.toggle('show', m==='vaccinate' && isMobile);
+  draw();
+}
+
+function togglePlay(){
+  if(dead)return;
+  playing=!playing;
+  const btn=document.getElementById('play-btn');
+  if(playing){
+    btn.textContent='⏸ PAUSE';btn.className='act-btn ab-pause';
+    log('Simulation running…','info');runLoop();
+  } else {
+    btn.textContent='▶ PLAY';btn.className='act-btn ab-play';
+    clearTimeout(tickTimer);
+  }
+}
+function runLoop(){
+  if(!playing||dead)return;
+  step();tickTimer=setTimeout(runLoop,TICK_MS);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+function initGame(){
+  tick=0;playing=false;dead=false;
+  tokens=TOTAL_TOK;mode='watch';
+  mutFired=false;newInf=0;prevInf=0;
+  r0hist=[];pulses=[];hov=null;
+  clearTimeout(tickTimer);
+
+  resize();
+  buildGraph(W,H);
+  layout(W,H,isMobile?120:150);
+
+  const pz=nodes[Math.floor(Math.random()*N)];
+  pz.state=ST.I;prevInf=1;
+  log(`Patient Zero: Node #${pz.id} (${pz.isHub?'HUB':'regular'}, cluster ${pz.cluster})`,'bad');
+  log('Switch to VACCINATE and tap nodes','info');
+
+  const ts=document.getElementById('tick-strip');
+  ts.innerHTML='';
+  for(let i=0;i<MAX_TICKS;i++){
+    const d=document.createElement('div');
+    d.className='t-cell'+(i===9?' mut':'');
+    ts.appendChild(d);
+  }
+  buildStateRows();updateToks();updateUI();draw();
+  document.getElementById('play-btn').textContent='▶ PLAY';
+  document.getElementById('play-btn').className='act-btn ab-play';
+  setMode('watch');
+}
+
+function updateToks(){
+  const row=document.getElementById('tok-row');row.innerHTML='';
+  for(let i=0;i<TOTAL_TOK;i++){
+    const d=document.createElement('div');
+    d.className='tok'+(i>=tokens?' spent':'');row.appendChild(d);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// END
+// ═══════════════════════════════════════════════════════════
+function endGame(){
+  dead=true;playing=false;clearTimeout(tickTimer);
+  document.getElementById('play-btn').textContent='▶ PLAY';
+  document.getElementById('play-btn').className='act-btn ab-play';
+  const infN=nodes.filter(n=>n.state===ST.I||n.state===ST.E).length;
+  const pct=infN/N;const won=pct<WIN_THR;
+  const score=Math.max(0,Math.round((1-pct)*100+tokens*8));
+  const vBridge=nodes.filter(n=>{
+    if(n.state!==ST.V)return false;
+    return edges.some(e=>{
+      const o=e.a===n.id?nodes[e.b]:e.b===n.id?nodes[e.a]:null;
+      return o&&o.cluster!==n.cluster;
+    });
+  }).length;
+  const vHub=nodes.filter(n=>n.state===ST.V&&n.isHub).length;
+  let insight;
+  if(won&&vBridge>0) insight=`You vaccinated ${vBridge} bridge node(s) — the betweenness centrality strategy. Blocking cross-cluster connectors starved entire echo chambers.`;
+  else if(won) insight=`Contained at ${(pct*100).toFixed(0)}%! ${vHub>0?'Hub targeting helped within clusters.':'Try targeting bridge nodes next time for even better results.'}`;
+  else if(vHub>0&&!vBridge) insight=`You targeted hubs (degree centrality) but the story crossed cluster bridges anyway. Bridge nodes have low degree but high betweenness — they're the real chokepoints.`;
+  else insight=`Deploy tokens before tick 5 and target the amber bridge edges connecting clusters — those are the critical chokepoints.`;
+  setTimeout(()=>{
+    showScreen('end');
+    document.getElementById('ev').textContent=won?'CONTAINED':'OUTBREAK';
+    document.getElementById('ev').className='end-verdict '+(won?'ev-win':'ev-lose');
+    document.getElementById('es-sub').textContent=won
+      ?`Infection held at ${(pct*100).toFixed(0)}% — below 50%. The network held.`
+      :`Infection reached ${(pct*100).toFixed(0)}%. The majority believes the story.`;
+    document.getElementById('es-pct').textContent=(pct*100).toFixed(0)+'%';
+    document.getElementById('es-tok').textContent=tokens;
+    document.getElementById('es-scr').textContent=score;
+    document.getElementById('ei-body').textContent=insight;
+  },500);
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id+'-screen').classList.add('active');
+}
+function startGame(){showScreen('game');setTimeout(initGame,60);}
+function doReset(){
+  if(playing)togglePlay();
+  const hint=document.getElementById('mob-hint');
+  if(hint)hint.classList.remove('show');
+  showScreen('game');
+  setTimeout(initGame,60);
+}
+function goTitle(){
+  const hint=document.getElementById('mob-hint');
+  if(hint)hint.classList.remove('show');
+  showScreen('title');
+}
+function log(msg,type=''){
+  const el=document.getElementById('log-body');
+  const d=document.createElement('div');
+  d.className='log-entry '+(type||'');
+  d.textContent=`[${String(tick).padStart(2,'0')}] ${msg}`;
+  el.insertBefore(d,el.firstChild);
+  while(el.children.length>50)el.removeChild(el.lastChild);
+}
+function flash(col){
+  const f=document.getElementById('flash');
+  f.style.background=col;f.style.opacity='1';
+  setTimeout(()=>f.style.opacity='0',200);
+}
+function showToast(){
+  const t=document.getElementById('mut-toast');
+  t.style.display='block';setTimeout(()=>t.style.display='none',3500);
+  flash('rgba(245,166,35,0.08)');
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANIMATION LOOP + RESIZE
+// ═══════════════════════════════════════════════════════════
+function animLoop(){if(pulses.length>0)draw();requestAnimationFrame(animLoop);}
+window.addEventListener('resize',()=>{
+  if(document.getElementById('game-screen').classList.contains('active')){
+    resize();draw();
+  }
+});
+animLoop();
+</script>
+</body>
+</html>
