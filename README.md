@@ -8,7 +8,7 @@
 
 A browser-based interactive epidemic simulator where misinformation spreads like a virus across a social network. Players deploy fact-checker tokens to contain the outbreak before it reaches 50% of nodes.
 
-**Course:** Computer Networks — National Chung Cheng University, Spring 2026  
+**Course:** Graph Signal Processing — National Chung Cheng University, Spring 2026  
 **Group Members:**
 | Member | Student ID | Role |
 |--------|-----------|------|
